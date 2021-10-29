@@ -105,10 +105,12 @@ class MeshDrawer
 		this.numTriangles = vertPos.length / 3;
 
 		// Enviamos al buffer
-		gl.bindBuffer(gl.ARRAY_BUFFER, this.bufferPos);
-		
 		// [COMPLETAR] Actualizar el contenido del buffer de vértices
+		gl.bindBuffer(gl.ARRAY_BUFFER, this.bufferPos);
 		gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertPos), gl.STATIC_DRAW);
+		
+		gl.bindBuffer(gl.ARRAY_BUFFER, this.bufferText);
+		gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(texCoords), gl.STATIC_DRAW);
 	}
 	
 	// Esta función se llama cada vez que el usuario cambia el estado del checkbox 'Intercambiar Y-Z'
@@ -118,7 +120,6 @@ class MeshDrawer
 		// [COMPLETAR] Setear variables uniformes en el vertex shader
 		gl.useProgram(this.prog);
 		gl.uniform1i(this.swap, swap);
-		console.log("OOPS")
 	}
 	
 	// Esta función se llama para dibujar la malla de triángulos
@@ -137,6 +138,10 @@ class MeshDrawer
 		gl.bindBuffer(gl.ARRAY_BUFFER, this.bufferPos);
 		gl.vertexAttribPointer(this.vert, 3, gl.FLOAT, false, 0, 0);
 		gl.enableVertexAttribArray(this.vert);
+		
+		gl.bindBuffer(gl.ARRAY_BUFFER, this.bufferText);
+		gl.vertexAttribPointer(this.textCoord, 2, gl.FLOAT, false, 0, 0);
+		gl.enableVertexAttribArray(this.textCoord);
 		// ...
 		// Dibujamos
 		gl.drawArrays( gl.TRIANGLES, 0, this.numTriangles * 3 );
@@ -146,14 +151,28 @@ class MeshDrawer
 	// El argumento es un componente <img> de html que contiene la textura. 
 	setTexture( img )
 	{
-
+		// [COMPLETAR] Binding de la textura
+		gl.bindTexture( gl.TEXTURE_2D, this.texture);
+		gl.texImage2D( gl.TEXTURE_2D, // Textura 2D
+								0, // Mipmap nivel 0
+								gl.RGB, // formato (en GPU)
+								gl.RGB, // formato del input
+								gl.UNSIGNED_BYTE, // tipo 
+								img  // arreglo o <img>
+						);
+		gl.generateMipmap( gl.TEXTURE_2D );
 	}
 					
 	// Esta función se llama cada vez que el usuario cambia el estado del checkbox 'Mostrar textura'
 	// El argumento es un boleano que indica si el checkbox está tildado
 	showTexture( show )
 	{
-
+		// [COMPLETAR] Setear variables uniformes en el fragment shader
+		gl.activeTexture( gl.TEXTURE0 ); // digo que voy a usar la Texture Unit 0
+		gl.bindTexture( gl.TEXTURE_2D, this.texture);
+		var sampler = gl.getUniformLocation(this.prog, 'texGPU' );
+		gl.useProgram(this.prog );
+		gl.uniform1i (sampler, 0 );  // Unidad 0
 	}
 
 }
@@ -162,11 +181,11 @@ class MeshDrawer
 // Si declaras las variables pero no las usas es como que no las declaraste y va a tirar error. Siempre va punto y coma al finalizar la sentencia. 
 // Las constantes en punto flotante necesitan ser expresadas como x.y, incluso si son enteros: ejemplo, para 4 escribimos 4.0
 var meshVS = `	
+	uniform int swap;
 	attribute vec3 pos;
 	uniform mat4 mvp;
-	uniform int swap;
-	attribute vec4 tc;
-	varying vec4 textCoord;
+	attribute vec2 tc;
+	varying vec2 textCoord;
 	void main()
 	{ 
 		textCoord = tc;
@@ -175,7 +194,7 @@ var meshVS = `
 		}else{
 			gl_Position = mvp * vec4(pos.x,pos.z,pos.y,1);
 		}
-			
+		
 	}
 `;
 
@@ -183,10 +202,10 @@ var meshVS = `
 var meshFS = `
 	precision mediump float;
 	uniform sampler2D textGPU;
-	varying vec4 textCoord;
+	varying vec2 textCoord;
 	void main()
 	{	
-		gl_FragColor = vec4(1,0,gl_FragCoord.z*gl_FragCoord.z,1);	
-		//gl_FragColor = texture2D(texGPU,texCoord);
+		//gl_FragColor = vec4(1,0,gl_FragCoord.z*gl_FragCoord.z,1);	
+		gl_FragColor = texture2D(textGPU,textCoord);
 	}
 `;
