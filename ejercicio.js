@@ -42,7 +42,19 @@
 function GetModelViewProjection( projectionMatrix, translationX, translationY, translationZ, rotationX, rotationY )
 {
 	// [COMPLETAR] Modificar el código para formar la matriz de transformación.
-
+	
+	var matrixRotationX = [
+		1, 0, 0, 0,
+		0, Math.cos(rotationX), Math.sin(rotationX), 0,
+		0, -Math.sin(rotationX), Math.cos(rotationX), 0,
+		0, 0, 0, 1
+	];
+	var matrixRotationY = [
+		Math.cos(rotationY), 0, -Math.sin(rotationY), 0,
+		0, 1, 0, 0,
+		Math.sin(rotationY), 0, Math.cos(rotationY), 0,
+		0, 0, 0, 1
+	];
 	// Matriz de traslación
 	var trans = [
 		1, 0, 0, 0,
@@ -50,8 +62,8 @@ function GetModelViewProjection( projectionMatrix, translationX, translationY, t
 		0, 0, 1, 0,
 		translationX, translationY, translationZ, 1
 	];
-
-	var mvp = MatrixMult( projectionMatrix, trans );
+	
+	var mvp = MatrixMult( projectionMatrix, MatrixMult( trans, MatrixMult( matrixRotationY, matrixRotationX ) ) );
 	return mvp;
 }
 
@@ -68,10 +80,17 @@ class MeshDrawer
 		// 2. Obtenemos los IDs de las variables uniformes en los shaders
 
 		// 3. Obtenemos los IDs de los atributos de los vértices en los shaders
-
-		// 4. Obtenemos los IDs de los atributos de los vértices en los shaders
-
 		// ...
+		this.prog   = InitShaderProgram( meshVS, meshFS );
+
+		this.swap = gl.getUniformLocation(this.prog, 'swap');
+		this.mvp = gl.getUniformLocation( this.prog, 'mvp' );
+		this.vert = gl.getAttribLocation( this.prog, 'pos' );
+		this.textCoord = gl.getAttribLocation( this.prog, 'tc' );
+		this.bufferPos = gl.createBuffer();
+		this.bufferText = gl.createBuffer();
+		this.texture = gl.createTexture(); 
+		
 	}
 	
 	// Esta función se llama cada vez que el usuario carga un nuevo archivo OBJ.
@@ -82,8 +101,14 @@ class MeshDrawer
 	// asocian a cada vértice en orden. 
 	setMesh( vertPos, texCoords )
 	{
-		// [COMPLETAR] Actualizar el contenido del buffer de vértices
+		console.log(vertPos);
 		this.numTriangles = vertPos.length / 3;
+
+		// Enviamos al buffer
+		gl.bindBuffer(gl.ARRAY_BUFFER, this.bufferPos);
+		
+		// [COMPLETAR] Actualizar el contenido del buffer de vértices
+		gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertPos), gl.STATIC_DRAW);
 	}
 	
 	// Esta función se llama cada vez que el usuario cambia el estado del checkbox 'Intercambiar Y-Z'
@@ -91,6 +116,9 @@ class MeshDrawer
 	swapYZ( swap )
 	{
 		// [COMPLETAR] Setear variables uniformes en el vertex shader
+		gl.useProgram(this.prog);
+		gl.uniform1i(this.swap, swap);
+		console.log("OOPS")
 	}
 	
 	// Esta función se llama para dibujar la malla de triángulos
@@ -100,48 +128,65 @@ class MeshDrawer
 		// [COMPLETAR] Completar con lo necesario para dibujar la colección de triángulos en WebGL
 		
 		// 1. Seleccionamos el shader
-	
+		gl.useProgram(this.prog);
+		
 		// 2. Setear matriz de transformacion
+		gl.uniformMatrix4fv(this.mvp, false, trans);
 		
 	    // 3.Binding de los buffers
-		
+		gl.bindBuffer(gl.ARRAY_BUFFER, this.bufferPos);
+		gl.vertexAttribPointer(this.vert, 3, gl.FLOAT, false, 0, 0);
+		gl.enableVertexAttribArray(this.vert);
 		// ...
 		// Dibujamos
-		// gl.drawArrays( gl.TRIANGLES, 0, this.numTriangles * 3 );
+		gl.drawArrays( gl.TRIANGLES, 0, this.numTriangles * 3 );
 	}
 	
 	// Esta función se llama para setear una textura sobre la malla
 	// El argumento es un componente <img> de html que contiene la textura. 
 	setTexture( img )
 	{
-		// [COMPLETAR] Binding de la textura
+
 	}
-	
+					
 	// Esta función se llama cada vez que el usuario cambia el estado del checkbox 'Mostrar textura'
 	// El argumento es un boleano que indica si el checkbox está tildado
 	showTexture( show )
 	{
-		// [COMPLETAR] Setear variables uniformes en el fragment shader
+
 	}
+
 }
 
 // Vertex Shader
 // Si declaras las variables pero no las usas es como que no las declaraste y va a tirar error. Siempre va punto y coma al finalizar la sentencia. 
 // Las constantes en punto flotante necesitan ser expresadas como x.y, incluso si son enteros: ejemplo, para 4 escribimos 4.0
-var meshVS = `
+var meshVS = `	
 	attribute vec3 pos;
 	uniform mat4 mvp;
+	uniform int swap;
+	attribute vec4 tc;
+	varying vec4 textCoord;
 	void main()
 	{ 
-		gl_Position = mvp * vec4(pos,1);
+		textCoord = tc;
+		if(swap == 0){
+			gl_Position = mvp * vec4(pos,1);
+		}else{
+			gl_Position = mvp * vec4(pos.x,pos.z,pos.y,1);
+		}
+			
 	}
 `;
 
 // Fragment Shader
 var meshFS = `
 	precision mediump float;
+	uniform sampler2D textGPU;
+	varying vec4 textCoord;
 	void main()
-	{		
-		gl_FragColor = vec4( 1, 0, 0, 1 );
+	{	
+		gl_FragColor = vec4(1,0,gl_FragCoord.z*gl_FragCoord.z,1);	
+		//gl_FragColor = texture2D(texGPU,texCoord);
 	}
 `;
