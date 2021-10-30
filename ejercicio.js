@@ -1,16 +1,16 @@
 // <============================================ EJERCICIOS ============================================>
 // a) Implementar la función:
 //
-//      GetModelViewProjection( projectionMatrix, translationX, translationY, translationZ, rotationX, rotationY )
+//      GetModelViewProjection(projectionMatrix, translationX, translationY, translationZ, rotationX, rotationY)
 //
 //    Si la implementación es correcta, podrán hacer rotar la caja correctamente (como en el video). IMPORTANTE: No
 //    es recomendable avanzar con los ejercicios b) y c) si este no funciona correctamente. 
 //
 // b) Implementar los métodos:
 //
-//      setMesh( vertPos, texCoords )
-//      swapYZ( swap )
-//      draw( trans )
+//      setMesh(vertPos, texCoords)
+//      swapYZ(swap)
+//      draw(trans)
 //
 //    Si la implementación es correcta, podrán visualizar el objeto 3D que hayan cargado, asi como también intercambiar 
 //    sus coordenadas yz. Para reenderizar cada fragmento, en vez de un color fijo, pueden retornar: 
@@ -22,8 +22,8 @@
 //
 // c) Implementar los métodos:
 //
-//      setTexture( img )
-//      showTexture( show )
+//      setTexture(img)
+//      showTexture(show)
 //
 //    Si la implementación es correcta, podrán visualizar el objeto 3D que hayan cargado y su textura.
 //
@@ -39,17 +39,15 @@
 // una matriz de 4x4 alamcenada como un arreglo en orden column-major. En el archivo project4.html ya está
 // implementada la función MatrixMult, pueden reutilizarla. 
 
-function GetModelViewProjection( projectionMatrix, translationX, translationY, translationZ, rotationX, rotationY )
+function GetModelViewProjection(projectionMatrix, translationX, translationY, translationZ, rotationX, rotationY)
 {
-	// [COMPLETAR] Modificar el código para formar la matriz de transformación.
-	
-	var matrixRotationX = [
+	var rotXMatrix = [
 		1, 0, 0, 0,
 		0, Math.cos(rotationX), Math.sin(rotationX), 0,
 		0, -Math.sin(rotationX), Math.cos(rotationX), 0,
 		0, 0, 0, 1
 	];
-	var matrixRotationY = [
+	var rotYMatrix = [
 		Math.cos(rotationY), 0, -Math.sin(rotationY), 0,
 		0, 1, 0, 0,
 		Math.sin(rotationY), 0, Math.cos(rotationY), 0,
@@ -63,30 +61,21 @@ function GetModelViewProjection( projectionMatrix, translationX, translationY, t
 		translationX, translationY, translationZ, 1
 	];
 	
-	var mvp = MatrixMult( projectionMatrix, MatrixMult( trans, MatrixMult( matrixRotationY, matrixRotationX ) ) );
+	var mvp = MatrixMult(projectionMatrix, MatrixMult(trans, MatrixMult(rotYMatrix, rotXMatrix)));
 	return mvp;
 }
 
-// [COMPLETAR] Completar la implementación de esta clase.
 class MeshDrawer
 {
 	// El constructor es donde nos encargamos de realizar las inicializaciones necesarias. 
 	constructor()
 	{
-		// [COMPLETAR] inicializaciones
-
-		// 1. Compilamos el programa de shaders
-		
-		// 2. Obtenemos los IDs de las variables uniformes en los shaders
-
-		// 3. Obtenemos los IDs de los atributos de los vértices en los shaders
-		// ...
-		this.prog   = InitShaderProgram( meshVS, meshFS );
+		this.prog   = InitShaderProgram(meshVS, meshFS);
 
 		this.swap = gl.getUniformLocation(this.prog, 'swap');
-		this.mvp = gl.getUniformLocation( this.prog, 'mvp' );
-		this.vert = gl.getAttribLocation( this.prog, 'pos' );
-		this.textCoord = gl.getAttribLocation( this.prog, 'tc' );
+		this.mvp = gl.getUniformLocation(this.prog, 'mvp');
+		this.vert = gl.getAttribLocation(this.prog, 'pos');
+		this.textCoord = gl.getAttribLocation(this.prog, 'tc');
 		this.bufferPos = gl.createBuffer();
 		this.bufferText = gl.createBuffer();
 		this.texture = gl.createTexture(); 
@@ -99,13 +88,11 @@ class MeshDrawer
 	// Los vértices se componen de a tres elementos consecutivos en el arreglo vertexPos [x0,y0,z0,x1,y1,z1,..,xn,yn,zn]
 	// De manera similar, las cooredenadas de textura se componen de a 2 elementos consecutivos y se 
 	// asocian a cada vértice en orden. 
-	setMesh( vertPos, texCoords )
+	setMesh(vertPos, texCoords)
 	{
 		console.log(vertPos);
 		this.numTriangles = vertPos.length / 3;
 
-		// Enviamos al buffer
-		// [COMPLETAR] Actualizar el contenido del buffer de vértices
 		gl.bindBuffer(gl.ARRAY_BUFFER, this.bufferPos);
 		gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertPos), gl.STATIC_DRAW);
 		
@@ -115,26 +102,20 @@ class MeshDrawer
 	
 	// Esta función se llama cada vez que el usuario cambia el estado del checkbox 'Intercambiar Y-Z'
 	// El argumento es un boleano que indica si el checkbox está tildado
-	swapYZ( swap )
+	swapYZ(swap)
 	{
-		// [COMPLETAR] Setear variables uniformes en el vertex shader
 		gl.useProgram(this.prog);
 		gl.uniform1i(this.swap, swap);
 	}
 	
 	// Esta función se llama para dibujar la malla de triángulos
 	// El argumento es la matriz de transformación, la misma matriz que retorna GetModelViewProjection
-	draw( trans )
+	draw(trans)
 	{
-		// [COMPLETAR] Completar con lo necesario para dibujar la colección de triángulos en WebGL
-		
-		// 1. Seleccionamos el shader
 		gl.useProgram(this.prog);
 		
-		// 2. Setear matriz de transformacion
 		gl.uniformMatrix4fv(this.mvp, false, trans);
 		
-	    // 3.Binding de los buffers
 		gl.bindBuffer(gl.ARRAY_BUFFER, this.bufferPos);
 		gl.vertexAttribPointer(this.vert, 3, gl.FLOAT, false, 0, 0);
 		gl.enableVertexAttribArray(this.vert);
@@ -142,37 +123,35 @@ class MeshDrawer
 		gl.bindBuffer(gl.ARRAY_BUFFER, this.bufferText);
 		gl.vertexAttribPointer(this.textCoord, 2, gl.FLOAT, false, 0, 0);
 		gl.enableVertexAttribArray(this.textCoord);
-		// ...
-		// Dibujamos
-		gl.drawArrays( gl.TRIANGLES, 0, this.numTriangles * 3 );
+
+		gl.drawArrays(gl.TRIANGLES, 0, this.numTriangles * 3);
 	}
 	
 	// Esta función se llama para setear una textura sobre la malla
 	// El argumento es un componente <img> de html que contiene la textura. 
-	setTexture( img )
+	setTexture(img)
 	{
-		// [COMPLETAR] Binding de la textura
-		gl.bindTexture( gl.TEXTURE_2D, this.texture);
-		gl.texImage2D( gl.TEXTURE_2D, // Textura 2D
-								0, // Mipmap nivel 0
-								gl.RGB, // formato (en GPU)
-								gl.RGB, // formato del input
-								gl.UNSIGNED_BYTE, // tipo 
-								img  // arreglo o <img>
-						);
-		gl.generateMipmap( gl.TEXTURE_2D );
+		gl.bindTexture(gl.TEXTURE_2D, this.texture);
+		gl.texImage2D(
+			gl.TEXTURE_2D,
+			0,
+			gl.RGB,
+			gl.RGB,
+			gl.UNSIGNED_BYTE,
+			img
+		);
+		gl.generateMipmap(gl.TEXTURE_2D);
 	}
 					
 	// Esta función se llama cada vez que el usuario cambia el estado del checkbox 'Mostrar textura'
 	// El argumento es un boleano que indica si el checkbox está tildado
-	showTexture( show )
+	showTexture(show)
 	{
-		// [COMPLETAR] Setear variables uniformes en el fragment shader
-		gl.activeTexture( gl.TEXTURE0 ); // digo que voy a usar la Texture Unit 0
-		gl.bindTexture( gl.TEXTURE_2D, this.texture);
-		var sampler = gl.getUniformLocation(this.prog, 'texGPU' );
-		gl.useProgram(this.prog );
-		gl.uniform1i (sampler, 0 );  // Unidad 0
+		gl.activeTexture(gl.TEXTURE0);
+		gl.bindTexture(gl.TEXTURE_2D, this.texture);
+		var sampler = gl.getUniformLocation(this.prog, 'texGPU');
+		gl.useProgram(this.prog);
+		gl.uniform1i (sampler, 0);
 	}
 
 }
@@ -194,7 +173,6 @@ var meshVS = `
 		}else{
 			gl_Position = mvp * vec4(pos.x,pos.z,pos.y,1);
 		}
-		
 	}
 `;
 
